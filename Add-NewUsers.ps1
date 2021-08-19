@@ -1,23 +1,20 @@
-﻿# Import active directory module for running AD cmdlets
+﻿#Импорт модуля Active Directory для запуска команд
 Import-Module ActiveDirectory
-  
-# Store the data from NewUsersFinal.csv in the $ADUsers variable
-$ADUsers = Import-Csv C:\temp\NewUsersFinal.csv -Delimiter ";"
 
-# Define UPN
-$UPN = "whereis.email"
+#Сохраняем данные из файла NewUsersFinal.csv в переменной $ADUsers
+$ADUsers = Import-Csv C:\temp\NewUsersFinal.csv -Delimiter ";"
 
 #Выполните цикл по каждой строке, содержащей сведения о пользователе в файле CSV
 foreach ($User in $ADUsers) {
-
-    #Read user data from each field in each row and assign the data to a variable as below
+    #Читаем пользовательские данные из каждого поля в каждой строке и назначаем данные в переменные как показано ниже
     $username = $User.username
     $password = $User.password
     $firstname = $User.firstname
     $lastname = $User.lastname
     $middlename = $User.middlename
     $Description = $User.Description
-    $OU = $User.ou #This field refers to the OU the user account is to be created in
+    $OU = $User.ou #Это поле относится к подразделению, в котором должна быть создана учетная запись пользователя
+    $UPN = $User.UPN
     $email = $User.email
     $streetaddress = $User.streetaddress
     $city = $User.city
@@ -28,16 +25,14 @@ foreach ($User in $ADUsers) {
     $company = $User.company
     $department = $User.department
 
-    # Check to see if the user already exists in AD
-    if (Get-ADUser -F { SamAccountName -eq $username }) {
-        
-        # If user does exist, give a warning
+    #Проверяем наличие пользователя из списка на наличие в Active Directory
+    if (Get-ADUser -F { SamAccountName -eq $username }) {  
+        #Если пользователь существует, выдаём предупреждение
         Write-Warning "A user account with username $username already exists in Active Directory."
     }
     else {
-
-        # User does not exist then proceed to create the new user account
-        # Account will be created in the OU provided by the $OU variable read from the CSV file
+        #Пользователь не существует, переходим к созданию новой учетной записи пользователя
+        #Учетная запись будет создана в подразделении переменной $OU, считанной из CSV-файла
         New-ADUser `
             -SamAccountName $username `
             -UserPrincipalName "$username@$UPN" `
@@ -58,13 +53,13 @@ foreach ($User in $ADUsers) {
             -EmailAddress $email `
             -Title $jobtitle `
             -Department $department `
-            -AccountPassword (ConvertTo-secureString $password -AsPlainText -Force) -ChangePasswordAtLogon $False -PasswordNeverExpires $True
-
-        # If user is created, show message.
+            -CannotChangePassword $True `
+            -PasswordNeverExpires $True `
+            -ChangePasswordAtLogon $False `
+            -AccountPassword (ConvertTo-secureString $password -AsPlainText -Force)
+        #Если пользователь создан, показываем сообщение.
         Write-Host "The user account $username is created." -ForegroundColor Cyan
     }
 }
-
-#-CannotChangePassword $True
 
 Read-Host -Prompt "Press Enter to exit"
